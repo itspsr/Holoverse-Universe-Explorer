@@ -78,12 +78,35 @@ const app = {
     }
 };
 
+// --- SAFARI & RENDERER COMPATIBILITY ---
+const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+
+function createRenderer() {
+    console.log("Safari Mode:", isSafari);
+
+    let renderer;
+    try {
+        renderer = new THREE.WebGLRenderer({ antialias: true, failIfMajorPerformanceCaveat: false });
+        renderer.setPixelRatio(window.devicePixelRatio || 1);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        // renderer.outputEncoding = THREE.sRGBEncoding; // r128 uses this property directly if needed, or toneMapping
+        // Note: r128 defaults are usually fine, but explicit encoding helps colors match design
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        renderer.toneMapping = THREE.ReinhardToneMapping;
+
+        return renderer;
+    } catch (e) {
+        console.warn("Safari WebGL failed → fallback mode", e);
+        return null;
+    }
+}
+
 // --- INITIALIZATION ---
 function init() {
     try {
         console.log("Initializing Holoverse...");
 
-        // Safety Clean: Remove any existing canvas from previous failed attempts or hot reloads
+        // Safety Clean
         const repoCanvas = document.querySelector('canvas');
         if (repoCanvas) document.body.removeChild(repoCanvas);
 
@@ -94,18 +117,23 @@ function init() {
         app.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100000);
         app.camera.position.set(0, 0, 100);
 
-        app.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-        app.renderer.setSize(window.innerWidth, window.innerHeight);
-        app.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        app.renderer.toneMapping = THREE.ReinhardToneMapping;
+        // SAFELY CREATE RENDERER
+        app.renderer = createRenderer();
 
-        // FORCE CANVAS STYLE (Fixes Github Pages flow and ensures proper layering)
+        if (!app.renderer) {
+            console.error("CRITICAL: Renderer creation failed. Displaying fallback.");
+            createFallbackScene(); // This creates a separate isolated loop/scene if possible or just alerts
+            return;
+        }
+
+        // FORCE CANVAS STYLE (Fixes Github Pages flow) & GPU ACCELERATION
         app.renderer.domElement.style.position = 'absolute';
         app.renderer.domElement.style.top = '0';
         app.renderer.domElement.style.left = '0';
         app.renderer.domElement.style.zIndex = '1';
         app.renderer.domElement.style.width = '100%';
         app.renderer.domElement.style.height = '100%';
+        app.renderer.domElement.style.webkitTransform = 'translateZ(0)'; // Safari GPU fix
 
         document.body.appendChild(app.renderer.domElement);
 
@@ -160,8 +188,8 @@ function init() {
 
     } catch (e) {
         console.error("Initialization Failed:", e);
-        // Retry logic: Attempt to re-initialize after a short delay
-        setTimeout(init, 1000);
+        // Fallback or Retry
+        createFallbackScene();
     }
 }
 
