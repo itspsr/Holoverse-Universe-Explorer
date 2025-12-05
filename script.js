@@ -148,73 +148,84 @@ function init() {
 // --- SCENE MANAGEMENT ---
 // --- SCENE MANAGEMENT ---
 // --- SCENE MANAGEMENT ---
+// --- SCENE MANAGEMENT ---
 window.startMainScene = function () {
+    // 1. Force Mode Immediate Switch
+    app.mode = 'SYSTEM_VIEW';
+
     try {
-        console.log("Starting Main Scene... (Force Visibility)");
-        if (app.mode === 'SYSTEM_VIEW') return; // Already there
+        console.log("Starting Main Scene...");
 
-        // SAFELY Trigger Effects
+        // Trigger Effects (Non-critical)
         try {
-            triggerVibration();
-            teleportEffect();
-        } catch (e) { console.warn("Effect Error:", e); }
-
-        app.mode = 'SYSTEM_VIEW';
-
-        // Ensure UI restoration (Defensive)
-        if (app.ui && app.ui.introLayer) {
-            app.ui.introLayer.style.display = 'none';
-            app.ui.introLayer.style.zIndex = '-1';
-        } else {
-            const rawIntro = document.getElementById("intro-layer");
-            if (rawIntro) { rawIntro.style.display = 'none'; rawIntro.style.zIndex = '-1'; }
+            if (typeof triggerVibration === 'function') triggerVibration();
+            if (typeof teleportEffect === 'function') teleportEffect();
+        } catch (e) {
+            console.warn("Effect skipped", e);
         }
 
-        if (app.ui && app.ui.uiLayer) {
-            app.ui.uiLayer.style.display = 'block';
-            app.ui.uiLayer.style.opacity = '1';
-            app.ui.uiLayer.style.visibility = 'visible';
-            app.ui.uiLayer.style.zIndex = '3000';
-        } else {
-            const rawUI = document.getElementById("ui-layer");
-            if (rawUI) {
-                rawUI.style.display = 'block';
-                rawUI.style.opacity = '1';
-                rawUI.style.visibility = 'visible';
-                rawUI.style.zIndex = '3000';
-            }
-        }
-
-        // Cleanup intro
-        if (app.intro) {
-            if (app.intro.wormhole) app.intro.wormhole.visible = false;
-            if (app.intro.nebula) app.intro.nebula.visible = false;
-            if (app.intro.stars) app.intro.stars.material.opacity = 0.4;
-        }
-
-        // Show Main Scene
-        if (app.planets) {
-            app.planets.forEach(p => { if (p.group) p.group.visible = true; });
-        }
-        if (app.ui && app.ui.dock) app.ui.dock.style.display = 'flex';
-
-        // Camera Reset
+        // 2. Reset Camera & Controls
         if (app.camera) {
             app.camera.position.set(0, 400, 600);
             app.camera.lookAt(0, 0, 0);
+            app.camera.fov = 45;
             app.camera.updateProjectionMatrix();
         }
-
         if (app.controls) {
             app.controls.enabled = true;
             app.controls.target.set(0, 0, 0);
             app.controls.update();
+            app.controls.saveState(); // Save this as the "home" state
+        }
+
+        // 3. Cleanup Intro Objects
+        if (app.intro) {
+            if (app.intro.wormhole) app.intro.wormhole.visible = false;
+            if (app.intro.nebula) app.intro.nebula.visible = false;
+            if (app.intro.stars) app.intro.stars.material.opacity = 0.5; // Ensure stars are visible as background
         }
 
     } catch (err) {
-        console.error("CRITICAL ERROR in startMainScene:", err);
-        // Emergency Fallback: Ensure mode is SYSTEM so loop continues
-        app.mode = 'SYSTEM_VIEW';
+        console.error("Main Scene Transition Error:", err);
+    } finally {
+        // 4. CRITICAL: FORCE VISIBILITY (Always Run)
+
+        // Show Planets
+        if (app.planets) {
+            app.planets.forEach(p => {
+                if (p.group) p.group.visible = true;
+            });
+        }
+
+        // Show Multiverse (Hidden)
+        if (app.multiverseBubbles) {
+            app.multiverseBubbles.forEach(b => b.visible = false);
+        }
+
+        // UI: Hide Intro Layer
+        const introLayer = document.getElementById('intro-layer');
+        if (introLayer) {
+            introLayer.style.display = 'none';
+            introLayer.style.zIndex = '-1';
+        } else if (app.ui && app.ui.introLayer) {
+            app.ui.introLayer.style.display = 'none';
+        }
+
+        // UI: Show Main UI Layer
+        const uiLayer = document.getElementById('ui-layer');
+        if (uiLayer) {
+            uiLayer.style.display = 'block';
+            uiLayer.style.opacity = '1';
+            uiLayer.style.visibility = 'visible';
+            uiLayer.style.zIndex = '3000';
+        }
+
+        // UI: Show Planet Dock
+        const dock = document.getElementById('planet-dock');
+        if (dock) dock.style.display = 'flex';
+
+        // Force Resize to fix any layout glitches
+        if (typeof onWindowResize === 'function') onWindowResize();
     }
 };
 
