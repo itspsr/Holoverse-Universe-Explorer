@@ -1,0 +1,336 @@
+:root {
+    --neon-cyan: #00FFFF;
+    --neon-blue: #0088FF;
+    --neon-purple: #BC13fe;
+    --neon-pink: #FF00AA;
+    --glass-bg: rgba(0, 10, 20, 0.65);
+    --glass-border: 1px solid rgba(0, 255, 255, 0.3);
+    --font-main: 'Orbitron', sans-serif;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: #000000;
+    color: #ffffff;
+    font-family: var(--font-main);
+    overflow: hidden;
+    user-select: none;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* UI Layer */
+#ui-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.ui-header {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    pointer-events: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 90%;
+    max-width: 400px;
+}
+
+#search-input {
+    width: 100%;
+    padding: 12px 20px;
+    color: #fff;
+    font-family: inherit;
+    font-size: 1rem;
+    text-align: center;
+    outline: none;
+    border-radius: 50px;
+}
+
+#search-results {
+    margin-top: 5px;
+    width: 100%;
+    max-height: 200px;
+    overflow-y: auto;
+    border-radius: 10px;
+}
+
+.search-item {
+    padding: 10px;
+    cursor: pointer;
+    border-bottom: 1px solid #333;
+}
+
+.search-item:hover {
+    background: rgba(0, 255, 255, 0.1);
+}
+
+.ui-nav {
+    position: absolute;
+    top: 50%;
+    right: 20px;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: auto;
+    align-items: flex-end;
+}
+
+.holo-btn {
+    margin-bottom: 10px;
+    /* spacing */
+}
+
+.ui-dock {
+    position: absolute;
+    bottom: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 15px;
+    pointer-events: auto;
+    padding: 10px 20px;
+    background: rgba(0, 0, 0, 0.6);
+    border-radius: 50px;
+    border: 1px solid #333;
+    backdrop-filter: blur(10px);
+    overflow-x: auto;
+    max-width: 90%;
+}
+
+.dock-item {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: transform 0.2s;
+    position: relative;
+    /* For label positioning */
+}
+
+.dock-item-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+}
+
+.dock-label {
+    font-size: 0.6rem;
+    color: var(--neon-cyan);
+    margin-top: 5px;
+    opacity: 0.8;
+    text-shadow: 0 0 2px var(--neon-blue);
+    font-family: 'Rajdhani', sans-serif;
+}
+
+.dock-item:hover {
+    transform: scale(1.1);
+}
+
+.dock-item.active {
+    border-color: #fff;
+    box-shadow: 0 0 15px currentColor;
+}
+
+#info-panel {
+    position: absolute;
+    top: 20%;
+    left: 5%;
+    width: 300px;
+    padding: 25px;
+    pointer-events: auto;
+    animation: slideInRight 0.5s ease-out reverse;
+}
+
+/* Animations & Classes */
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(50px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.holo-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: var(--glass-border);
+    box-shadow: 0 0 15px rgba(0, 255, 255, 0.1);
+    border-radius: 12px;
+}
+
+/* Intro Styles */
+#skip-btn {
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid var(--neon-cyan);
+    backdrop-filter: blur(4px);
+    z-index: 2001;
+}
+
+#skip-btn:hover {
+    background: var(--neon-cyan);
+    color: #000;
+}
+
+.caption-fade-in {
+    animation: fadeInOut 4s forwards;
+}
+
+@keyframes fadeInOut {
+    0% {
+        opacity: 0;
+        transform: translateY(20px);
+        letter-spacing: 2px;
+    }
+
+    20% {
+        opacity: 1;
+        transform: translateY(0);
+        letter-spacing: 4px;
+    }
+
+    80% {
+        opacity: 1;
+        transform: translateY(0);
+        letter-spacing: 4px;
+    }
+
+    100% {
+        opacity: 0;
+        transform: translateY(-10px);
+        letter-spacing: 6px;
+    }
+}
+
+.holo-btn {
+    background: linear-gradient(90deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 100, 255, 0.2) 100%);
+    border: 1px solid var(--neon-cyan);
+    color: #fff;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-family: inherit;
+    text-align: right;
+    min-width: 140px;
+}
+
+.holo-btn:hover {
+    background: rgba(0, 255, 255, 0.2);
+    box-shadow: 0 0 10px var(--neon-cyan);
+}
+
+.ui-footer {
+    position: absolute;
+    bottom: 15px;
+    width: 100%;
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--neon-blue);
+    opacity: 0.8;
+    pointer-events: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+}
+
+.linkedin-icon-btn {
+    text-decoration: none;
+    pointer-events: auto;
+    width: 30px;
+    height: 30px;
+    background: rgba(0, 100, 255, 0.2);
+    border: 1px solid var(--neon-cyan);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    color: #fff;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 5px var(--neon-cyan);
+}
+
+.linkedin-icon-btn:hover {
+    background: var(--neon-cyan);
+    color: #000;
+    box-shadow: 0 0 15px var(--neon-cyan);
+    transform: scale(1.1);
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+    .ui-nav {
+        top: auto;
+        bottom: 110px;
+        right: 10px;
+        transform: none;
+    }
+
+    .holo-btn {
+        padding: 8px 15px;
+        min-width: auto;
+    }
+
+    #info-panel {
+        top: 15%;
+        left: 5%;
+        width: 85%;
+    }
+
+    .ui-dock {
+        bottom: 40px;
+        gap: 10px;
+    }
+
+    .dock-item {
+        width: 35px;
+        height: 35px;
+    }
+}
+
+/* Teleport Effect */
+@keyframes teleportFlash {
+    0% {
+        background: rgba(255, 255, 255, 0);
+    }
+
+    10% {
+        background: rgba(255, 255, 255, 1);
+    }
+
+    100% {
+        background: rgba(255, 255, 255, 0);
+    }
+}
+
+.teleport-active {
+    animation: teleportFlash 0.5s ease-out forwards;
+    display: block !important;
+}
+
+/* Multiverse Label */
+.universe-label {
+    position: absolute;
+    color: var(--neon-cyan);
+    font-size: 0.8rem;
+    pointer-events: none;
+    text-shadow: 0 0 5px var(--neon-blue);
+}
