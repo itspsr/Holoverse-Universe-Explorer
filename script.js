@@ -91,6 +91,15 @@ function init() {
     app.renderer.setSize(window.innerWidth, window.innerHeight);
     app.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     app.renderer.toneMapping = THREE.ReinhardToneMapping;
+
+    // FORCE CANVAS STYLE
+    app.renderer.domElement.style.position = 'absolute';
+    app.renderer.domElement.style.top = '0';
+    app.renderer.domElement.style.left = '0';
+    app.renderer.domElement.style.zIndex = '1'; // Low z-index
+    app.renderer.domElement.style.width = '100%';
+    app.renderer.domElement.style.height = '100%';
+
     document.body.appendChild(app.renderer.domElement);
 
     app.controls = new THREE.OrbitControls(app.camera, app.renderer.domElement);
@@ -137,8 +146,9 @@ function init() {
 }
 
 // --- SCENE MANAGEMENT ---
+// --- SCENE MANAGEMENT ---
 window.startMainScene = function () {
-    console.log("Starting Main Scene...");
+    console.log("Starting Main Scene... (Force Visibility)");
     if (app.mode === 'SYSTEM_VIEW') return; // Already there
 
     triggerVibration();
@@ -147,18 +157,23 @@ window.startMainScene = function () {
     app.mode = 'SYSTEM_VIEW';
 
     // Ensure UI restoration
-    if (app.ui.introLayer) app.ui.introLayer.style.display = 'none';
+    if (app.ui.introLayer) {
+        app.ui.introLayer.style.display = 'none';
+        app.ui.introLayer.style.zIndex = '-1';
+    }
+
     if (app.ui.uiLayer) {
         app.ui.uiLayer.style.display = 'block';
         app.ui.uiLayer.style.opacity = '1';
         app.ui.uiLayer.style.visibility = 'visible';
+        app.ui.uiLayer.style.zIndex = '3000'; // Ensure it's on top
     }
 
-    // Fallback UI restore
-    const rootUI = document.getElementById("root");
+    // Fallback UI restore by ID
+    const rootUI = document.getElementById("ui-layer");
     if (rootUI) {
-        rootUI.style.opacity = 1;
         rootUI.style.display = 'block';
+        rootUI.style.zIndex = '3000';
     }
 
     // Cleanup intro
@@ -176,7 +191,11 @@ window.startMainScene = function () {
     app.camera.fov = 45;
     app.camera.updateProjectionMatrix();
 
-    app.controls.enabled = true;
+    if (app.controls) {
+        app.controls.enabled = true;
+        app.controls.target.set(0, 0, 0);
+        app.controls.update();
+    }
 };
 
 // --- CINEMATIC INTRO ---
