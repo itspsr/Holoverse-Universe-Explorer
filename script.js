@@ -75,6 +75,16 @@ const app = {
     touch: {
         startX: 0, startY: 0, startTime: 0,
         lastPinchDist: 0, isPinching: false
+    },
+
+    // Sci-Fi Universe State
+    universe: {
+        stars: null,
+        nebula: null,
+        dust: null,
+        asteroids: [],
+        moon: null,
+        isInitialized: false
     }
 };
 
@@ -143,6 +153,12 @@ function init() {
         app.controls.maxDistance = 200000;
         app.controls.minDistance = 2; // Allow very close zoom
         app.controls.enabled = false;
+        app.controls.autoRotate = true; // Auto drift
+        app.controls.autoRotateSpeed = 0.2; // Slow drift
+
+        app.controls.addEventListener('start', () => {
+            app.controls.autoRotate = false; // Stop on interaction
+        });
 
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
         app.scene.add(ambientLight);
@@ -200,6 +216,9 @@ function init() {
 window.startMainScene = function () {
     // 1. Force Mode Immediate Switch
     app.mode = 'SYSTEM_VIEW';
+
+    // START UNIVERSE (Sci-Fi Visuals)
+    startUniverse();
 
     try {
         console.log("Starting Main Scene...");
@@ -564,6 +583,257 @@ function teleportEffect(showText) {
 
 function triggerVibration() {
     if (navigator.vibrate) navigator.vibrate(50);
+}
+
+// ==========================================
+// 🌌 HIGH-END SCI-FI VISUALS
+// ==========================================
+
+function startUniverse() {
+    if (app.universe.isInitialized) return;
+    app.universe.isInitialized = true;
+
+    console.log("🌌 Igniting Holoverse Engine...");
+
+    createStarfield(app.scene);
+    createMilkyWay(app.scene);
+    createNanoDust(app.scene);
+    createAsteroids(app.scene);
+    createMoon(app.scene); // Hero object
+}
+
+// 1. SCI-FI STARFIELD (Layered & Twinkling)
+function createStarfield(scene) {
+    const starCount = 6000;
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(starCount * 3);
+    const colors = new Float32Array(starCount * 3);
+    const sizes = new Float32Array(starCount);
+
+    const colorPalette = [
+        new THREE.Color('#00FFFF'), // Cyan
+        new THREE.Color('#FFFFFF'), // White
+        new THREE.Color('#4466FF')  // Blue
+    ];
+
+    for (let i = 0; i < starCount; i++) {
+        const i3 = i * 3;
+        // Spread stars far out
+        const r = 4000 + Math.random() * 8000;
+        const theta = 2 * Math.PI * Math.random();
+        const phi = Math.acos(2 * Math.random() - 1);
+
+        positions[i3] = r * Math.sin(phi) * Math.cos(theta);
+        positions[i3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+        positions[i3 + 2] = r * Math.cos(phi);
+
+        // Colors
+        const c = colorPalette[Math.floor(Math.random() * colorPalette.length)];
+        colors[i3] = c.r;
+        colors[i3 + 1] = c.g;
+        colors[i3 + 2] = c.b;
+
+        // Sizes (Layering)
+        sizes[i] = Math.random() * 2;
+    }
+
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+    // Shader for Twinkling
+    const material = new THREE.ShaderMaterial({
+        uniforms: {
+            time: { value: 0 },
+            pointTexture: { value: new THREE.TextureLoader().load('https://threejs.org/examples/textures/sprites/spark1.png') }
+        },
+        vertexShader: `
+            attribute float size;
+            varying vec3 vColor;
+            void main() {
+                vColor = color;
+                vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                gl_PointSize = size * (300.0 / -mvPosition.z);
+                gl_Position = projectionMatrix * mvPosition;
+            }
+        `,
+        fragmentShader: `
+            uniform float time;
+            uniform sampler2D pointTexture;
+            varying vec3 vColor;
+            void main() {
+                float twinkle = 0.5 + 0.5 * sin(time * 5.0 + gl_FragCoord.x);
+                gl_FragColor = vec4(vColor * twinkle, 1.0);
+                gl_FragColor = gl_FragColor * texture2D(pointTexture, gl_PointCoord);
+            }
+        `,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        transparent: true
+    });
+
+    const stars = new THREE.Points(geometry, material);
+    scene.add(stars);
+    app.universe.stars = stars;
+}
+
+// 2. NEON MILKY WAY (Energy Nebula)
+function createMilkyWay(scene) {
+    const geometry = new THREE.SphereGeometry(9000, 32, 32);
+    // Gradient shader for neon look
+    const material = new THREE.ShaderMaterial({
+        uniforms: {
+            time: { value: 0 }
+        },
+        vertexShader: `
+            varying vec2 vUv;
+            void main() {
+                vUv = uv;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `,
+        fragmentShader: `
+            uniform float time;
+            varying vec2 vUv;
+            
+            // Simple noise function
+            float noise(vec2 p) {
+                return sin(p.x * 10.0 + time) * sin(p.y * 10.0 + time);
+            }
+
+            void main() {
+                // Nebula gradient
+                vec3 color1 = vec3(0.0, 0.0, 0.1); // Deep Blue
+                vec3 color2 = vec3(0.5, 0.0, 0.5); // Purple
+                vec3 color3 = vec3(0.0, 1.0, 1.0); // Cyan
+
+                float n = noise(vUv * 2.0);
+                vec3 finalColor = mix(color1, color2, vUv.y);
+                finalColor += color3 * n * 0.1;
+
+                gl_FragColor = vec4(finalColor, 0.3); // Low opacity
+            }
+        `,
+        side: THREE.BackSide,
+        blending: THREE.AdditiveBlending,
+        transparent: true
+    });
+
+    const nebula = new THREE.Mesh(geometry, material);
+    scene.add(nebula);
+    app.universe.nebula = nebula;
+}
+
+// 3. BLUE NANO PARTICLES (Cosmic Dust)
+function createNanoDust(scene) {
+    const count = 1000;
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(count * 3);
+
+    for (let i = 0; i < count; i++) {
+        const x = (Math.random() - 0.5) * 600;
+        const y = (Math.random() - 0.5) * 200;
+        const z = (Math.random() - 0.5) * 600;
+        positions[i * 3] = x;
+        positions[i * 3 + 1] = y;
+        positions[i * 3 + 2] = z;
+    }
+
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+    const material = new THREE.PointsMaterial({
+        color: 0x00FFFF,
+        size: 2,
+        blending: THREE.AdditiveBlending,
+        transparent: true,
+        opacity: 0.6,
+        map: new THREE.TextureLoader().load('https://threejs.org/examples/textures/sprites/ball.png')
+    });
+
+    const dust = new THREE.Points(geometry, material);
+    scene.add(dust);
+    app.universe.dust = dust;
+}
+
+// 4. NEON ASTEROIDS
+function createAsteroids(scene) {
+    const count = 40;
+    const asteroidGroup = new THREE.Group();
+
+    // Shared geometry
+    const geometry = new THREE.IcosahedronGeometry(2, 0); // Low poly
+
+    for (let i = 0; i < count; i++) {
+        const material = new THREE.MeshBasicMaterial({
+            color: 0x222222,
+            wireframe: true, // Tech sci-fi look
+            transparent: true,
+            opacity: 0.8
+        });
+
+        // Add glowing cracks (inner mesh)
+        const innerMat = new THREE.MeshBasicMaterial({
+            color: 0x00FFFF,
+            side: THREE.BackSide
+        });
+
+        const asteroid = new THREE.Mesh(geometry, material);
+        const crack = new THREE.Mesh(new THREE.IcosahedronGeometry(1.8, 0), innerMat);
+        asteroid.add(crack);
+
+        // Position in belt
+        const angle = Math.random() * Math.PI * 2;
+        const radius = 300 + Math.random() * 100; // Belt radius
+        asteroid.position.set(
+            Math.cos(angle) * radius,
+            (Math.random() - 0.5) * 20,
+            Math.sin(angle) * radius
+        );
+        asteroid.rotation.set(Math.random() * 3, Math.random() * 3, Math.random() * 3);
+
+        // Custom orbit data
+        asteroid.userData = {
+            orbitSpeed: 0.001 + Math.random() * 0.002,
+            rotSpeed: 0.01 + Math.random() * 0.02,
+            angle: angle,
+            radius: radius
+        };
+
+        asteroidGroup.add(asteroid);
+        app.universe.asteroids.push(asteroid);
+    }
+
+    scene.add(asteroidGroup);
+}
+
+// 5. SCI-FI MOON (Hero Object)
+function createMoon(scene) {
+    const geometry = new THREE.SphereGeometry(50, 64, 64); // Big hero object
+    const material = new THREE.MeshStandardMaterial({
+        color: 0x111111,
+        emissive: 0x0044aa,
+        emissiveIntensity: 0.2,
+        roughness: 0.8,
+        metalness: 0.5,
+        wireframe: false
+    });
+
+    const moon = new THREE.Mesh(geometry, material);
+    moon.position.set(-800, 200, -800); // Fixed backdrop position at first
+
+    // Add neon grid on top
+    const gridGeo = new THREE.IcosahedronGeometry(50.5, 2);
+    const gridMat = new THREE.MeshBasicMaterial({
+        color: 0x00FFFF,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.1
+    });
+    const grid = new THREE.Mesh(gridGeo, gridMat);
+    moon.add(grid);
+
+    scene.add(moon);
+    app.universe.moon = moon;
 }
 
 // --- OBJECT FACTORIES ---
@@ -982,6 +1252,39 @@ function animate() {
         if (clouds) clouds.rotation.y += 0.005;
     });
 
+    // Update Sci-Fi Universe
+    if (app.universe.isInitialized) {
+        // Milky Way
+        if (app.universe.nebula) {
+            app.universe.nebula.rotation.y += 0.0002;
+            app.universe.nebula.material.uniforms.time.value = time;
+        }
+        // Stars
+        if (app.universe.stars) {
+            app.universe.stars.material.uniforms.time.value = time;
+            app.universe.stars.rotation.y += 0.0001; // Parallax
+        }
+        // Dust
+        if (app.universe.dust) {
+            app.universe.dust.rotation.y -= 0.0005;
+            app.universe.dust.position.y = Math.sin(time * 0.5) * 5;
+        }
+        // Asteroids
+        app.universe.asteroids.forEach(ast => {
+            ast.rotation.x += ast.userData.rotSpeed;
+            ast.rotation.y += ast.userData.rotSpeed;
+            // Orbit
+            ast.userData.angle += ast.userData.orbitSpeed;
+            ast.group = ast.parent; // Safety
+            ast.position.x = Math.cos(ast.userData.angle) * ast.userData.radius;
+            ast.position.z = Math.sin(ast.userData.angle) * ast.userData.radius;
+        });
+        // Moon
+        if (app.universe.moon) {
+            app.universe.moon.rotation.y += 0.001;
+        }
+    }
+
     if (app.mode === 'MULTIVERSE') {
         app.multiverseBubbles.forEach((b, i) => {
             b.rotation.y += 0.002 * (i % 2 === 0 ? 1 : -1);
@@ -1015,7 +1318,7 @@ function animate() {
 // --- SAFETY WATCHDOG & FALLBACK ---
 let introCompleted = false;
 
-window.startUniverse = function () {
+window.safeguardUniverse = function () {
     try {
         console.log("🚀 Ensuring Universe Render...");
 
@@ -1092,7 +1395,7 @@ function createFallbackScene() {
 setTimeout(() => {
     if (!introCompleted && app.mode !== 'SYSTEM_VIEW') {
         console.warn("Intro timed out. Forcing Universe Start.");
-        startUniverse();
+        safeguardUniverse();
     }
 }, 16000);
 
