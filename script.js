@@ -123,8 +123,61 @@ function init() {
     canvas.addEventListener('touchmove', onTouchMove, { passive: false });
     canvas.addEventListener('touchend', onTouchEnd);
 
+    // Safety Fallback
+    setTimeout(() => {
+        if (app.mode === 'INTRO') {
+            console.warn("Safety Fallback Initiated: Forcing Main Scene Start");
+            if (typeof startMainScene === "function") startMainScene();
+            else if (typeof initMainScene === "function") initMainScene();
+            else if (typeof loadSolarSystem === "function") loadSolarSystem();
+        }
+    }, 15000); // 15s to allow full 13s intro to play out
+
     animate();
 }
+
+// --- SCENE MANAGEMENT ---
+window.startMainScene = function () {
+    console.log("Starting Main Scene...");
+    if (app.mode === 'SYSTEM_VIEW') return; // Already there
+
+    triggerVibration();
+    teleportEffect();
+
+    app.mode = 'SYSTEM_VIEW';
+
+    // Ensure UI restoration
+    if (app.ui.introLayer) app.ui.introLayer.style.display = 'none';
+    if (app.ui.uiLayer) {
+        app.ui.uiLayer.style.display = 'block';
+        app.ui.uiLayer.style.opacity = '1';
+        app.ui.uiLayer.style.visibility = 'visible';
+    }
+
+    // Fallback UI restore
+    const rootUI = document.getElementById("root");
+    if (rootUI) {
+        rootUI.style.opacity = 1;
+        rootUI.style.display = 'block';
+    }
+
+    // Cleanup intro
+    if (app.intro.wormhole) app.intro.wormhole.visible = false;
+    if (app.intro.nebula) app.intro.nebula.visible = false;
+    if (app.intro.stars) app.intro.stars.material.opacity = 0.4; // Reset star opacity
+
+    // Show Main Scene
+    app.planets.forEach(p => p.group.visible = true);
+    app.ui.dock.style.display = 'flex';
+
+    // Camera Reset
+    app.camera.position.set(0, 400, 600);
+    app.camera.lookAt(0, 0, 0);
+    app.camera.fov = 45;
+    app.camera.updateProjectionMatrix();
+
+    app.controls.enabled = true;
+};
 
 // --- CINEMATIC INTRO ---
 function initIntro() {
@@ -171,7 +224,7 @@ function updateIntro(time) {
         }
     }
     if (elapsed > 13.0) {
-        skipIntro();
+        startMainScene();
     }
 }
 
@@ -184,25 +237,7 @@ function showCaption(text) {
 }
 
 function skipIntro() {
-    if (app.mode !== 'INTRO') return;
-    triggerVibration();
-    teleportEffect();
-
-    app.mode = 'SYSTEM_VIEW';
-    app.ui.introLayer.style.display = 'none';
-    app.ui.uiLayer.style.display = 'block';
-
-    if (app.intro.wormhole) app.intro.wormhole.visible = false;
-    if (app.intro.nebula) app.intro.nebula.visible = false;
-
-    app.planets.forEach(p => p.group.visible = true);
-
-    app.camera.position.set(0, 400, 600);
-    app.camera.lookAt(0, 0, 0);
-    app.camera.fov = 45;
-    app.camera.updateProjectionMatrix();
-
-    app.controls.enabled = true;
+    startMainScene();
 }
 
 // --- MULTIVERSE MODE ---
