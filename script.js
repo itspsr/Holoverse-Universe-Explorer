@@ -80,69 +80,89 @@ const app = {
 
 // --- INITIALIZATION ---
 function init() {
-    app.scene = new THREE.Scene();
-    app.scene.background = new THREE.Color(0x000000);
-    app.scene.fog = new THREE.FogExp2(0x000000, 0.0002);
+    try {
+        console.log("Initializing Holoverse...");
 
-    app.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100000);
-    app.camera.position.set(0, 0, 100);
+        // Safety Clean: Remove any existing canvas from previous failed attempts or hot reloads
+        const repoCanvas = document.querySelector('canvas');
+        if (repoCanvas) document.body.removeChild(repoCanvas);
 
-    app.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-    app.renderer.setSize(window.innerWidth, window.innerHeight);
-    app.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    app.renderer.toneMapping = THREE.ReinhardToneMapping;
+        app.scene = new THREE.Scene();
+        app.scene.background = new THREE.Color(0x000000);
+        app.scene.fog = new THREE.FogExp2(0x000000, 0.0002);
 
-    // FORCE CANVAS STYLE
-    app.renderer.domElement.style.position = 'absolute';
-    app.renderer.domElement.style.top = '0';
-    app.renderer.domElement.style.left = '0';
-    app.renderer.domElement.style.zIndex = '1'; // Low z-index
-    app.renderer.domElement.style.width = '100%';
-    app.renderer.domElement.style.height = '100%';
+        app.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100000);
+        app.camera.position.set(0, 0, 100);
 
-    document.body.appendChild(app.renderer.domElement);
+        app.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+        app.renderer.setSize(window.innerWidth, window.innerHeight);
+        app.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        app.renderer.toneMapping = THREE.ReinhardToneMapping;
 
-    app.controls = new THREE.OrbitControls(app.camera, app.renderer.domElement);
-    app.controls.enableDamping = true;
-    app.controls.dampingFactor = 0.05;
-    app.controls.maxDistance = 200000;
-    app.controls.minDistance = 2; // Allow very close zoom
-    app.controls.enabled = false;
+        // FORCE CANVAS STYLE (Fixes Github Pages flow and ensures proper layering)
+        app.renderer.domElement.style.position = 'absolute';
+        app.renderer.domElement.style.top = '0';
+        app.renderer.domElement.style.left = '0';
+        app.renderer.domElement.style.zIndex = '1';
+        app.renderer.domElement.style.width = '100%';
+        app.renderer.domElement.style.height = '100%';
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
-    app.scene.add(ambientLight);
-    const sunLight = new THREE.PointLight(0xffffff, 1.5, 4000);
-    app.scene.add(sunLight);
+        document.body.appendChild(app.renderer.domElement);
 
-    createStars();
-    createNebula();
-    createWormhole();
-    createPlanets();
-    generateDock();
+        app.controls = new THREE.OrbitControls(app.camera, app.renderer.domElement);
+        app.controls.enableDamping = true;
+        app.controls.dampingFactor = 0.05;
+        app.controls.maxDistance = 200000;
+        app.controls.minDistance = 2; // Allow very close zoom
+        app.controls.enabled = false;
 
-    initIntro();
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+        app.scene.add(ambientLight);
+        const sunLight = new THREE.PointLight(0xffffff, 1.5, 4000);
+        app.scene.add(sunLight);
 
-    window.addEventListener('resize', onWindowResize);
-    window.addEventListener('click', onClick);
-    app.ui.searchInput.addEventListener('input', onSearchInput);
-    app.ui.skipBtn.addEventListener('click', skipIntro);
+        createStars();
+        createNebula();
+        createWormhole();
+        createPlanets();
+        generateDock();
 
-    const canvas = app.renderer.domElement;
-    canvas.addEventListener('touchstart', onTouchStart, { passive: false });
-    canvas.addEventListener('touchmove', onTouchMove, { passive: false });
-    canvas.addEventListener('touchend', onTouchEnd);
+        initIntro();
 
-    // Safety Fallback
-    setTimeout(() => {
-        if (app.mode === 'INTRO') {
-            console.warn("Safety Fallback Initiated: Forcing Main Scene Start");
-            if (typeof startMainScene === "function") startMainScene();
-            else if (typeof initMainScene === "function") initMainScene();
-            else if (typeof loadSolarSystem === "function") loadSolarSystem();
+        window.addEventListener('resize', onWindowResize);
+        window.addEventListener('click', onClick);
+        if (app.ui.searchInput) app.ui.searchInput.addEventListener('input', onSearchInput);
+        if (app.ui.skipBtn) app.ui.skipBtn.addEventListener('click', skipIntro);
+
+        const canvas = app.renderer.domElement;
+        canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+        canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+        canvas.addEventListener('touchend', onTouchEnd);
+
+        // Safety Fallback for Main Scene
+        setTimeout(() => {
+            if (app.mode === 'INTRO') {
+                console.warn("Safety Fallback Initiated: Forcing Main Scene Start");
+                if (typeof startMainScene === "function") startMainScene();
+            }
+        }, 15000);
+
+        // Stop Loading Screen
+        const loader = document.getElementById("loading-overlay");
+        if (loader) {
+            setTimeout(() => {
+                loader.style.opacity = 0;
+                setTimeout(() => loader.style.display = 'none', 1000);
+            }, 1000);
         }
-    }, 15000); // 15s to allow full 13s intro to play out
 
-    animate();
+        animate();
+
+    } catch (e) {
+        console.error("Initialization Failed:", e);
+        // Retry logic: Attempt to re-initialize after a short delay
+        setTimeout(init, 1000);
+    }
 }
 
 // --- SCENE MANAGEMENT ---
