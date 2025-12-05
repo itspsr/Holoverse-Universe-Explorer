@@ -147,54 +147,74 @@ function init() {
 
 // --- SCENE MANAGEMENT ---
 // --- SCENE MANAGEMENT ---
+// --- SCENE MANAGEMENT ---
 window.startMainScene = function () {
-    console.log("Starting Main Scene... (Force Visibility)");
-    if (app.mode === 'SYSTEM_VIEW') return; // Already there
+    try {
+        console.log("Starting Main Scene... (Force Visibility)");
+        if (app.mode === 'SYSTEM_VIEW') return; // Already there
 
-    triggerVibration();
-    teleportEffect();
+        // SAFELY Trigger Effects
+        try {
+            triggerVibration();
+            teleportEffect();
+        } catch (e) { console.warn("Effect Error:", e); }
 
-    app.mode = 'SYSTEM_VIEW';
+        app.mode = 'SYSTEM_VIEW';
 
-    // Ensure UI restoration
-    if (app.ui.introLayer) {
-        app.ui.introLayer.style.display = 'none';
-        app.ui.introLayer.style.zIndex = '-1';
-    }
+        // Ensure UI restoration (Defensive)
+        if (app.ui && app.ui.introLayer) {
+            app.ui.introLayer.style.display = 'none';
+            app.ui.introLayer.style.zIndex = '-1';
+        } else {
+            const rawIntro = document.getElementById("intro-layer");
+            if (rawIntro) { rawIntro.style.display = 'none'; rawIntro.style.zIndex = '-1'; }
+        }
 
-    if (app.ui.uiLayer) {
-        app.ui.uiLayer.style.display = 'block';
-        app.ui.uiLayer.style.opacity = '1';
-        app.ui.uiLayer.style.visibility = 'visible';
-        app.ui.uiLayer.style.zIndex = '3000'; // Ensure it's on top
-    }
+        if (app.ui && app.ui.uiLayer) {
+            app.ui.uiLayer.style.display = 'block';
+            app.ui.uiLayer.style.opacity = '1';
+            app.ui.uiLayer.style.visibility = 'visible';
+            app.ui.uiLayer.style.zIndex = '3000';
+        } else {
+            const rawUI = document.getElementById("ui-layer");
+            if (rawUI) {
+                rawUI.style.display = 'block';
+                rawUI.style.opacity = '1';
+                rawUI.style.visibility = 'visible';
+                rawUI.style.zIndex = '3000';
+            }
+        }
 
-    // Fallback UI restore by ID
-    const rootUI = document.getElementById("ui-layer");
-    if (rootUI) {
-        rootUI.style.display = 'block';
-        rootUI.style.zIndex = '3000';
-    }
+        // Cleanup intro
+        if (app.intro) {
+            if (app.intro.wormhole) app.intro.wormhole.visible = false;
+            if (app.intro.nebula) app.intro.nebula.visible = false;
+            if (app.intro.stars) app.intro.stars.material.opacity = 0.4;
+        }
 
-    // Cleanup intro
-    if (app.intro.wormhole) app.intro.wormhole.visible = false;
-    if (app.intro.nebula) app.intro.nebula.visible = false;
-    if (app.intro.stars) app.intro.stars.material.opacity = 0.4; // Reset star opacity
+        // Show Main Scene
+        if (app.planets) {
+            app.planets.forEach(p => { if (p.group) p.group.visible = true; });
+        }
+        if (app.ui && app.ui.dock) app.ui.dock.style.display = 'flex';
 
-    // Show Main Scene
-    app.planets.forEach(p => p.group.visible = true);
-    app.ui.dock.style.display = 'flex';
+        // Camera Reset
+        if (app.camera) {
+            app.camera.position.set(0, 400, 600);
+            app.camera.lookAt(0, 0, 0);
+            app.camera.updateProjectionMatrix();
+        }
 
-    // Camera Reset
-    app.camera.position.set(0, 400, 600);
-    app.camera.lookAt(0, 0, 0);
-    app.camera.fov = 45;
-    app.camera.updateProjectionMatrix();
+        if (app.controls) {
+            app.controls.enabled = true;
+            app.controls.target.set(0, 0, 0);
+            app.controls.update();
+        }
 
-    if (app.controls) {
-        app.controls.enabled = true;
-        app.controls.target.set(0, 0, 0);
-        app.controls.update();
+    } catch (err) {
+        console.error("CRITICAL ERROR in startMainScene:", err);
+        // Emergency Fallback: Ensure mode is SYSTEM so loop continues
+        app.mode = 'SYSTEM_VIEW';
     }
 };
 
@@ -468,15 +488,17 @@ function teleportToRandom() {
 }
 
 function teleportEffect(showText) {
+    if (!app.ui.teleportOverlay) return;
+
     app.ui.teleportOverlay.classList.remove('teleport-active');
-    void app.ui.teleportOverlay.offsetWidth;
+    void app.ui.teleportOverlay.offsetWidth; // Trigger reflow
     app.ui.teleportOverlay.classList.add('teleport-active');
 
     // Handle Quantum Text
     if (showText && app.ui.quantumText) {
         app.ui.quantumText.style.opacity = 1;
         setTimeout(() => {
-            app.ui.quantumText.style.opacity = 0;
+            if (app.ui.quantumText) app.ui.quantumText.style.opacity = 0;
         }, 3000);
     }
 }
