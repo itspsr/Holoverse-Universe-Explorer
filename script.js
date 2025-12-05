@@ -984,4 +984,89 @@ function animate() {
     app.renderer.render(app.scene, app.camera);
 }
 
+// --- SAFETY WATCHDOG & FALLBACK ---
+let introCompleted = false;
+
+window.startUniverse = function () {
+    try {
+        console.log("🚀 Ensuring Universe Render...");
+
+        // 1. Check Three.js
+        if (!window.THREE) {
+            console.error("❌ THREE.js not loaded.");
+            const errDiv = document.createElement("div");
+            errDiv.style.position = "fixed";
+            errDiv.style.top = "50%";
+            errDiv.style.left = "50%";
+            errDiv.style.transform = "translate(-50%, -50%)";
+            errDiv.style.color = "red";
+            errDiv.style.background = "black";
+            errDiv.style.padding = "20px";
+            errDiv.innerText = "CRITICAL ERROR: THREE.js failed to load.";
+            document.body.appendChild(errDiv);
+            return;
+        }
+
+        // 2. Try to transition to Main Scene
+        if (typeof startMainScene === "function") {
+            startMainScene();
+        } else {
+            console.warn("⚠️ startMainScene not found. Creating fallback cube...");
+            createFallbackScene();
+        }
+
+        // 3. Last Resort: Check if scene is empty
+        if (app.scene.children.length < 2) {
+            console.warn("⚠️ Scene appears empty. Injecting fallback cube.");
+            createFallbackScene();
+        }
+
+        document.getElementById("ui-layer").style.display = "block";
+        introCompleted = true;
+
+    } catch (e) {
+        console.error("❌ Universe Failed:", e);
+        // If critical failure, try just a raw fallback
+        createFallbackScene();
+    }
+}
+
+function createFallbackScene() {
+    // Prevent double fallback
+    if (window.hasFallback) return;
+    window.hasFallback = true;
+
+    console.warn("Initializing Fallback Scene (Wireframe Cube)");
+
+    // Nuke existing if needed or add to it? Best to add to it to avoid breaking context
+    const geometry = new THREE.BoxGeometry(20, 20, 20);
+    const material = new THREE.MeshBasicMaterial({ color: 0x00ffff, wireframe: true });
+    const cube = new THREE.Mesh(geometry, material);
+    app.scene.add(cube);
+
+    // Ensure we have a camera
+    if (!app.camera) {
+        app.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        app.camera.position.z = 50;
+    }
+
+    // Ensure we are rendering
+    function fallbackAnimate() {
+        requestAnimationFrame(fallbackAnimate);
+        cube.rotation.x += 0.01;
+        cube.rotation.y += 0.01;
+        if (app.renderer) app.renderer.render(app.scene, app.camera);
+    }
+    fallbackAnimate();
+}
+
+// Validation Timer: Allow intro (13s) + buffer = 16s
+setTimeout(() => {
+    if (!introCompleted && app.mode !== 'SYSTEM_VIEW') {
+        console.warn("Intro timed out. Forcing Universe Start.");
+        startUniverse();
+    }
+}, 16000);
+
+// Note: init() is called at the end of definitions
 init();
